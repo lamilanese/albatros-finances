@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nouveau virement — Orchestre Albatros</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #E8A83E;
+    --gold-hover: #d4962e;
+    --black: #1a1a1a;
+    --fill: transparent;
+    --fill-hover: transparent;
+    --gray-400: #a3a3a3;
+    --gray-500: #737373;
+    --white: #ffffff;
+    --red: #dc2626;
+    --green: #16a34a;
+    --mono: 'Courier New', 'Courier', monospace;
+    --serif: 'Georgia', 'Times New Roman', serif;
+  }
+
+  body {
+    font-family: var(--mono);
+    background: var(--white);
+    color: var(--black);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header — compact gold bar */
+  .header {
+    background: var(--gold);
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .header svg { width: 20px; height: 29px; flex-shrink: 0; }
+  .header h1 {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Form */
+  .form-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 1.25rem 2.5rem;
+  }
+
+  /* Field */
+  .field {
+    position: relative;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Labels — small, bold, tight */
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-bottom: 0.3rem;
+  }
+  label .req { color: var(--red); margin-left: 1px; }
+
+  /* Filled input boxes */
+  input[type="text"],
+  input[type="date"] {
+    width: 100%;
+    border: none;
+    padding: 0.7rem 0.75rem;
+    font-size: 0.95rem;
+    font-family: var(--mono);
+    color: var(--black);
+    background: transparent;
+    border-bottom: 2px solid var(--black);
+    outline: none;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s;
+  }
+  input:focus { border-bottom-color: var(--gold); }
+  input::placeholder { color: var(--gray-400); }
+
+
+  /* Row: side-by-side fields */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .field-row .field { margin-bottom: 0; }
+
+  /* Type toggle */
+  .type-toggle {
+    display: flex;
+    margin-bottom: 0.75rem;
+    border: 2px solid var(--black);
+  }
+  .type-toggle button {
+    flex: 1;
+    padding: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--gray-500);
+    transition: background 0.15s, color 0.15s;
+  }
+  .type-toggle button.active {
+    background: var(--black);
+    color: var(--white);
+  }
+
+  /* Validation */
+  .field.error input { border-bottom-color: var(--red) !important; }
+  .field.error .file-drop { border-color: var(--red) !important; }
+  .error-msg {
+    color: var(--red);
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    margin-top: 0.2rem;
+    display: none;
+  }
+  .field.error .error-msg { display: block; }
+  .field.valid input { border-bottom-color: var(--green); }
+
+  /* Autocomplete */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1px solid var(--fill-hover);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+  }
+  .autocomplete-list.open { display: block; }
+  .autocomplete-item {
+    padding: 0.6rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.1s;
+  }
+  .autocomplete-item + .autocomplete-item { border-top: 1px solid var(--fill); }
+  .autocomplete-item:hover,
+  .autocomplete-item.active { background: var(--fill); }
+  .autocomplete-item.new-entry {
+    color: var(--gold);
+    font-weight: 700;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+  }
+  .autocomplete-item .sub {
+    font-size: 0.7rem;
+    font-family: var(--mono);
+    color: var(--gray-400);
+    margin-top: 1px;
+  }
+
+  /* IBAN */
+  #iban { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.85rem; }
+  #iban.locked { color: var(--gray-500); cursor: not-allowed; }
+
+  /* File upload — compact */
+  .file-drop {
+    border: 2px dashed var(--black);
+    padding: 1.25rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+  .file-drop:hover,
+  .file-drop.dragover { border-color: var(--gold); }
+  .file-drop input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .file-drop-icon {
+    font-family: var(--mono);
+    font-size: 1.25rem;
+    color: var(--gray-400);
+    font-weight: 700;
+  }
+  .file-drop-text { color: var(--gray-500); font-size: 0.8rem; margin-top: 0.15rem; }
+  .file-drop-text strong { color: var(--gold); }
+  .file-drop-hint {
+    font-size: 0.6rem;
+    font-family: var(--mono);
+    color: var(--gray-400);
+    margin-top: 0.35rem;
+  }
+
+  /* File preview */
+  .file-preview {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    background: #fafafa;
+  }
+  .file-preview.visible { display: flex; }
+  .file-preview-name {
+    flex: 1;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-preview-size { font-size: 0.65rem; font-family: var(--mono); color: var(--gray-500); flex-shrink: 0; }
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.15rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* Submit */
+  .submit-btn {
+    width: 100%;
+    padding: 0.9rem;
+    background: var(--gold);
+    color: var(--black);
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-top: 1.25rem;
+  }
+  .submit-btn:hover { background: var(--gold-hover); }
+  .submit-btn:active { opacity: 0.9; }
+  .submit-btn:disabled {
+    background: var(--fill);
+    color: var(--gray-400);
+    cursor: not-allowed;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    background: var(--black);
+    color: var(--white);
+    padding: 0.75rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    z-index: 100;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 90vw;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* Mock banner */
+  .mock-banner {
+    background: #fef3c7;
+    color: #92400e;
+    text-align: center;
+    padding: 0.3rem;
+    font-size: 0.6rem;
+    font-family: var(--mono);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<header class="header">
+  <svg viewBox="0 0 79.87 115.66" xmlns="http://www.w3.org/2000/svg"><path d="m6.896 108.752-6.896-6.904V70.829 39.809L19.88 19.928C30.814 8.993 39.858.025 39.977 0c.12-.025 9.145 8.885 20.057 19.8l19.84 19.845v31.158 31.158l-6.9 6.847c-3.794 3.766-6.937 6.848-6.984 6.848-.047 0-.086-6.73-.086-14.955V85.747l-12.855-12.9c-7.07-7.096-12.951-12.881-13.068-12.856-.197.043-5.402 5.204-20.141 19.973l-5.785 5.797v14.948c0 8.222-.059 14.948-.131 14.948-.073 0-3.235-3.107-7.028-6.904zm33.063-68.663c.105-.035 5.914 5.658 12.909 12.653l12.718 12.717.208-.252c.16-.192.197-2.521.16-9.943l-.05-9.692-12.855-12.863c-7.07-7.075-12.933-12.864-13.028-12.865-.095 0-4.299 4.129-9.341 9.177-9.528 9.538-13.971 13.962-14.186 14.125-.069.052-.646.646-1.282 1.32l-1.157 1.225v9.666c0 7.337.05 9.717.207 9.874l.208.208 12.649-12.643c6.957-6.953 12.735-12.671 12.84-12.707z" fill="#000"/></svg>
+  <h1>Nouveau virement</h1>
+</header>
+
+<form class="form-wrap" id="invoiceForm" novalidate>
+
+  <div class="type-toggle" id="typeToggle">
+    <button type="button" class="active" data-type="virement">Paiement</button>
+    <button type="button" data-type="defraiement">Défraiement</button>
+  </div>
+
+  <div class="field" data-field="label">
+    <label for="label">Intitulé<span class="req">*</span></label>
+    <input type="text" id="label" placeholder="Ex: Location salle concert" required autocomplete="off">
+    <div class="error-msg">Ce champ est requis</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field" data-field="amount">
+      <label for="amount">Montant<span class="req">*</span></label>
+      <input type="text" id="amount" placeholder="0,00" required inputmode="decimal" autocomplete="off">
+      <div class="error-msg">Montant invalide</div>
+    </div>
+    <div class="field" data-field="dueDate">
+      <label for="dueDate">Échéance</label>
+      <input type="date" id="dueDate">
+      <div class="error-msg">Date future requise</div>
+    </div>
+  </div>
+
+  <div class="field" data-field="recipient">
+    <label for="recipient">Destinataire<span class="req">*</span></label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="recipient" placeholder="Rechercher ou ajouter" required autocomplete="off">
+      <div class="autocomplete-list" id="recipientList"></div>
+    </div>
+    <div class="error-msg">Ce champ est requis</div>
+  </div>
+
+  <div class="field" data-field="iban">
+    <label for="iban">IBAN<span class="req">*</span></label>
+    <input type="text" id="iban" placeholder="FR76 1234 5678 9012 3456 7890 123" required autocomplete="off" inputmode="text">
+    <div class="error-msg">IBAN invalide</div>
+  </div>
+
+  <div class="field" data-field="file">
+    <label>Facture<span class="req">*</span></label>
+    <div class="file-drop" id="fileDrop">
+      <input type="file" id="fileInput"
+        accept="application/pdf,application/x-pdf,image/jpeg,image/jpg,image/pjpeg,image/png,image/x-png,image/heic,image/heif,image/heic-sequence,image/heif-sequence,image/webp,image/tiff,image/avif,image/gif,image/bmp">
+      <div class="file-drop-icon">+</div>
+      <div class="file-drop-text">Glisser ou <strong>parcourir</strong></div>
+      <div class="file-drop-hint">PDF ou image — max 50 Mo</div>
+    </div>
+    <div class="file-preview" id="filePreview">
+      <span class="file-preview-name" id="fileName"></span>
+      <span class="file-preview-size" id="fileSize"></span>
+      <button type="button" class="file-remove" id="fileRemove">&times;</button>
+    </div>
+    <div class="error-msg">Fichier requis</div>
+  </div>
+
+  <button type="submit" class="submit-btn" id="submitBtn">Envoyer</button>
+</form>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Supabase ───
+const SUPABASE_URL = 'https://cktwvraoveqwnuvmomgv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHd2cmFvdmVxd251dm1vbWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzI3MjcsImV4cCI6MjEwNzEwODcyN30.7TTDebel-imQkaDKSJYAFIke3ugnTnPrW9Ekd26Ppuw';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── State ───
+let recipients = [];
+let selectedRecipient = null;
+let selectedFile = null;
+let wireType = 'virement';
+
+// ─── Elements ───
+const form = document.getElementById('invoiceForm');
+const labelInput = document.getElementById('label');
+const amountInput = document.getElementById('amount');
+const recipientInput = document.getElementById('recipient');
+const recipientList = document.getElementById('recipientList');
+const ibanInput = document.getElementById('iban');
+const dueDateInput = document.getElementById('dueDate');
+const fileInput = document.getElementById('fileInput');
+const fileDrop = document.getElementById('fileDrop');
+const filePreview = document.getElementById('filePreview');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const fileRemove = document.getElementById('fileRemove');
+const submitBtn = document.getElementById('submitBtn');
+const toast = document.getElementById('toast');
+const typeToggle = document.getElementById('typeToggle');
+const dueDateLabel = dueDateInput.closest('.field').querySelector('label');
+const dueDateError = dueDateInput.closest('.field').querySelector('.error-msg');
+
+// ─── Type toggle ───
+typeToggle.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-type]');
+  if (!btn || btn.classList.contains('active')) return;
+  typeToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  wireType = btn.dataset.type;
+  dueDateInput.value = '';
+  clearFieldError('dueDate');
+  if (wireType === 'defraiement') {
+    dueDateLabel.textContent = 'Date du paiement';
+    dueDateError.textContent = 'Date invalide';
+    dueDateInput.removeAttribute('min');
+  } else {
+    dueDateLabel.textContent = 'Échéance';
+    dueDateError.textContent = 'Date future requise';
+    setMinDate();
+  }
+});
+
+// ─── Date: set min to tomorrow ───
+function setMinDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  dueDateInput.min = tomorrow.toISOString().split('T')[0];
+}
+setMinDate();
+
+// ─── IBAN validation (MOD-97) ───
+function formatIBAN(raw) {
+  const clean = raw.replace(/\s/g, '').toUpperCase();
+  return clean.replace(/(.{4})/g, '$1 ').trim();
+}
+
+function validateIBAN(iban) {
+  const clean = iban.replace(/\s/g, '').toUpperCase();
+  if (clean.length < 15 || clean.length > 34) return false;
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(clean)) return false;
+  // MOD-97 check
+  const rearranged = clean.slice(4) + clean.slice(0, 4);
+  const numeric = rearranged.replace(/[A-Z]/g, ch => (ch.charCodeAt(0) - 55).toString());
+  let remainder = numeric.slice(0, 2);
+  for (let i = 2; i < numeric.length; i++) {
+    remainder = (parseInt(remainder + numeric[i], 10) % 97).toString();
+  }
+  return parseInt(remainder, 10) === 1;
+}
+
+// IBAN lock/unlock based on selected recipient
+function lockIBAN() {
+  ibanInput.readOnly = true;
+  ibanInput.classList.add('locked');
+}
+function unlockIBAN() {
+  ibanInput.readOnly = false;
+  ibanInput.classList.remove('locked');
+}
+
+// IBAN auto-format on input
+ibanInput.addEventListener('input', () => {
+  if (ibanInput.readOnly) return;
+  const pos = ibanInput.selectionStart;
+  const before = ibanInput.value;
+  const formatted = formatIBAN(ibanInput.value);
+  ibanInput.value = formatted;
+  const diff = formatted.length - before.length;
+  ibanInput.setSelectionRange(pos + diff, pos + diff);
+  clearFieldError('iban');
+  if (formatted.replace(/\s/g, '').length >= 15) {
+    const field = ibanInput.closest('.field');
+    if (validateIBAN(formatted)) {
+      field.classList.add('valid');
+      field.classList.remove('error');
+    } else {
+      field.classList.remove('valid');
+    }
+  } else {
+    ibanInput.closest('.field').classList.remove('valid');
+  }
+});
+
+// ─── Amount: accept commas, auto-format to .00 ───
+amountInput.addEventListener('input', () => {
+  // Allow only digits, commas, dots
+  amountInput.value = amountInput.value.replace(/[^0-9.,]/g, '');
+  clearFieldError('amount');
+});
+
+amountInput.addEventListener('blur', () => {
+  let val = amountInput.value.replace(/\s/g, '').replace(',', '.');
+  const num = parseFloat(val);
+  if (!isNaN(num) && num > 0) {
+    amountInput.value = num.toFixed(2).replace('.', ',');
+  }
+});
+
+function parseAmount(str) {
+  return parseFloat(str.replace(/\s/g, '').replace(',', '.'));
+}
+
+// ─── Recipient autocomplete ───
+let activeIndex = -1;
+
+function renderRecipientList(query) {
+  const q = query.toLowerCase().trim();
+  recipientList.innerHTML = '';
+  activeIndex = -1;
+  if (!q) { recipientList.classList.remove('open'); return; }
+
+  const matches = recipients.filter(r =>
+    r.recipient_label.toLowerCase().includes(q)
+  );
+
+  const exactMatch = recipients.some(r =>
+    r.recipient_label.toLowerCase() === q
+  );
+
+  matches.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+    div.dataset.index = i;
+    div.innerHTML = `<div>${highlightMatch(r.recipient_label, q)}</div><div class="sub">${formatIBAN(r.iban)}</div>`;
+    div.addEventListener('mousedown', e => { e.preventDefault(); selectRecipient(r); });
+    recipientList.appendChild(div);
+  });
+
+  if (!exactMatch && q.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item new-entry';
+    div.innerHTML = `+ Ajouter "${query.trim()}"`;
+    div.addEventListener('mousedown', e => {
+      e.preventDefault();
+      selectedRecipient = null;
+      unlockIBAN();
+      ibanInput.value = '';
+      ibanInput.closest('.field').classList.remove('valid');
+      recipientList.classList.remove('open');
+    });
+    recipientList.appendChild(div);
+  }
+
+  recipientList.classList.toggle('open', recipientList.children.length > 0);
+}
+
+function highlightMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query);
+  if (idx === -1) return text;
+  return text.slice(0, idx) + '<strong>' + text.slice(idx, idx + query.length) + '</strong>' + text.slice(idx + query.length);
+}
+
+function selectRecipient(r) {
+  selectedRecipient = r;
+  recipientInput.value = r.recipient_label;
+  ibanInput.value = formatIBAN(r.iban);
+  lockIBAN();
+  recipientList.classList.remove('open');
+  clearFieldError('recipient');
+  clearFieldError('iban');
+  ibanInput.closest('.field').classList.add('valid');
+}
+
+recipientInput.addEventListener('input', () => {
+  selectedRecipient = null;
+  unlockIBAN();
+  ibanInput.value = '';
+  ibanInput.closest('.field').classList.remove('valid');
+  renderRecipientList(recipientInput.value);
+  clearFieldError('recipient');
+});
+
+// Auto-capitalize new recipient names (title case)
+function toProperCase(str) {
+  return str.replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
+recipientInput.addEventListener('blur', () => {
+  if (!selectedRecipient && recipientInput.value.trim()) {
+    recipientInput.value = toProperCase(recipientInput.value.trim());
+  }
+});
+
+recipientInput.addEventListener('focus', () => {
+  if (recipientInput.value.trim()) renderRecipientList(recipientInput.value);
+});
+
+recipientInput.addEventListener('blur', () => {
+  setTimeout(() => recipientList.classList.remove('open'), 150);
+});
+
+// Keyboard nav for autocomplete
+recipientInput.addEventListener('keydown', e => {
+  const items = recipientList.querySelectorAll('.autocomplete-item');
+  if (!recipientList.classList.contains('open') || items.length === 0) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    activeIndex = Math.min(activeIndex + 1, items.length - 1);
+    updateActiveItem(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    activeIndex = Math.max(activeIndex - 1, 0);
+    updateActiveItem(items);
+  } else if (e.key === 'Enter' && activeIndex >= 0) {
+    e.preventDefault();
+    items[activeIndex].dispatchEvent(new Event('mousedown'));
+  }
+});
+
+function updateActiveItem(items) {
+  items.forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+}
+
+// ─── File upload ───
+const ACCEPTED_TYPES = [
+  'application/pdf','application/x-pdf',
+  'image/jpeg','image/jpg','image/pjpeg',
+  'image/png','image/x-png',
+  'image/heic','image/heif','image/heic-sequence','image/heif-sequence',
+  'image/webp','image/tiff','image/avif','image/gif','image/bmp'
+];
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+function handleFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const validExt = ['pdf','jpg','jpeg','png','heic','heif','webp','tiff','tif','avif','gif','bmp'];
+  if (!ACCEPTED_TYPES.includes(file.type) && !validExt.includes(ext)) {
+    showToast('Type de fichier non accepté', 'error');
+    return;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    showToast('Fichier trop volumineux (max 50 Mo)', 'error');
+    return;
+  }
+  selectedFile = file;
+  fileName.textContent = file.name;
+  fileSize.textContent = formatFileSize(file.size);
+  filePreview.classList.add('visible');
+  fileDrop.style.display = 'none';
+  clearFieldError('file');
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' Ko';
+  return (bytes / 1048576).toFixed(1) + ' Mo';
+}
+
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+fileDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  fileDrop.classList.remove('dragover');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+fileRemove.addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  filePreview.classList.remove('visible');
+  fileDrop.style.display = '';
+});
+
+// ─── Validation ───
+function setFieldError(name, msg) {
+  const field = document.querySelector(`[data-field="${name}"]`);
+  if (!field) return;
+  field.classList.add('error');
+  if (msg) field.querySelector('.error-msg').textContent = msg;
+}
+
+function clearFieldError(name) {
+  const field = document.querySelector(`[data-field="${name}"]`);
+  if (!field) return;
+  field.classList.remove('error');
+}
+
+// Clear errors on input
+labelInput.addEventListener('input', () => clearFieldError('label'));
+amountInput.addEventListener('input', () => clearFieldError('amount'));
+dueDateInput.addEventListener('input', () => clearFieldError('dueDate'));
+
+function validateForm() {
+  let valid = true;
+
+  // Label
+  if (!labelInput.value.trim()) { setFieldError('label', 'Ce champ est requis'); valid = false; }
+
+  // Amount
+  const amt = parseAmount(amountInput.value);
+  if (!amountInput.value || isNaN(amt) || amt <= 0) {
+    setFieldError('amount', 'Montant invalide (doit être > 0)');
+    valid = false;
+  }
+
+  // Recipient
+  if (!recipientInput.value.trim()) { setFieldError('recipient', 'Ce champ est requis'); valid = false; }
+
+  // IBAN
+  if (!ibanInput.value.trim()) {
+    setFieldError('iban', 'Ce champ est requis');
+    valid = false;
+  } else if (!validateIBAN(ibanInput.value)) {
+    setFieldError('iban', 'IBAN invalide');
+    valid = false;
+  }
+
+  // Date (optional for virement/future only, optional for défraiement/any date)
+  const dateVal = dueDateInput.value;
+  if (dateVal && wireType === 'virement') {
+    const selected = new Date(dateVal);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selected <= today) {
+      setFieldError('dueDate', 'La date doit être dans le futur');
+      valid = false;
+    }
+  }
+
+  // File
+  if (!selectedFile) { setFieldError('file', 'Fichier requis (PDF ou image)'); valid = false; }
+
+  return valid;
+}
+
+// ─── Submit ───
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!validateForm()) {
+    // Scroll to first error
+    const firstError = form.querySelector('.field.error');
+    if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Envoi en cours...';
+
+  const data = {
+    type: wireType,
+    label: labelInput.value.trim(),
+    amount: parseAmount(amountInput.value),
+    recipient_label: recipientInput.value.trim(),
+    iban: ibanInput.value.replace(/\s/g, '').toUpperCase(),
+    due_date: dueDateInput.value,
+    file_name: selectedFile.name,
+    file_size: selectedFile.size,
+    existing_recipient_id: selectedRecipient?.recipient_id || null,
+  };
+
+  try {
+    await submitToSupabase(data);
+    showToast('Virement enregistré avec succès', 'success');
+    resetForm();
+  } catch (err) {
+    console.error(err);
+    showToast('Erreur: ' + err.message, 'error');
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Envoyer';
+});
+
+function resetForm() {
+  form.reset();
+  selectedFile = null;
+  selectedRecipient = null;
+  wireType = 'virement';
+  typeToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.type === 'virement'));
+  dueDateLabel.textContent = 'Échéance';
+  dueDateError.textContent = 'Date future requise';
+  unlockIBAN();
+  filePreview.classList.remove('visible');
+  fileDrop.style.display = '';
+  document.querySelectorAll('.field').forEach(f => {
+    f.classList.remove('error', 'valid');
+  });
+  setMinDate();
+}
+
+// ─── Toast ───
+let toastTimer;
+function showToast(msg, type) {
+  toast.textContent = msg;
+  toast.className = 'toast ' + type;
+  requestAnimationFrame(() => toast.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ─── Supabase operations ───
+async function fetchRecipients() {
+  const { data, error } = await sb.from('recipients').select('*');
+  if (error) { console.error('Fetch recipients error:', error); return; }
+  recipients = data || [];
+}
+
+async function submitToSupabase(data) {
+  let recipientId = data.existing_recipient_id;
+
+  // 1. Create or reuse recipient (upsert on IBAN to avoid duplicates)
+  if (!recipientId) {
+    const { data: newRecipient, error: rErr } = await sb
+      .from('recipients')
+      .upsert(
+        { recipient_label: data.recipient_label, iban: data.iban },
+        { onConflict: 'iban' }
+      )
+      .select('recipient_id')
+      .single();
+    if (rErr) throw new Error('Erreur destinataire: ' + rErr.message);
+    recipientId = newRecipient.recipient_id;
+  }
+
+  // 2. Insert invoice
+  const { data: invoice, error: iErr } = await sb
+    .from('invoices')
+    .insert({
+      label: data.label,
+      amount: data.amount,
+      recipient_id: recipientId,
+      due_date: data.due_date || null,
+      sent: false,
+    })
+    .select('id, invoice_number')
+    .single();
+  if (iErr) throw new Error('Erreur facture: ' + iErr.message);
+
+  // 3. Upload file to storage bucket
+  const fileExt = selectedFile.name.split('.').pop().toLowerCase();
+  const filePath = `${invoice.invoice_number}.${fileExt}`;
+  const { error: uErr } = await sb.storage
+    .from('invoices')
+    .upload(filePath, selectedFile, { upsert: false });
+  if (uErr) throw new Error('Erreur upload: ' + uErr.message);
+
+  // 3b. Store file path in invoice
+  const { error: upErr } = await sb
+    .from('invoices')
+    .update({ file_path: filePath })
+    .eq('id', invoice.id);
+  if (upErr) console.warn('Failed to store file_path:', upErr);
+
+  // 4. Telegram notification (best-effort, don't block on failure)
+  try {
+    await sb.functions.invoke('notify-telegram', {
+      body: {
+        type: data.type,
+        label: data.label,
+        amount: data.amount,
+        recipient_label: data.recipient_label,
+        iban: data.iban,
+        new_recipient: !data.existing_recipient_id,
+        due_date: data.due_date,
+        invoice_id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        file_path: filePath,
+      },
+    });
+  } catch (e) { console.warn('Telegram notification failed:', e); }
+
+  // 5. Refresh recipients list
+  await fetchRecipients();
+}
+
+// ─── Init: load recipients on page load ───
+fetchRecipients();
+</script>
+</body>
+</html>
