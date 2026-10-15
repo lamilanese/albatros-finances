@@ -477,7 +477,7 @@ typeToggle.addEventListener('click', e => {
   typeToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   wireType = btn.dataset.type;
-  dueDateInput.value = '';
+  dueDateInput.value = new Date().toISOString().split('T')[0];
   clearFieldError('dueDate');
   if (wireType === 'defraiement') {
     dueDateLabel.textContent = 'Date du paiement';
