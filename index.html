@@ -487,6 +487,7 @@ function setMinDate() {
   dueDateInput.min = tomorrow.toISOString().split('T')[0];
 }
 setMinDate();
+dueDateInput.value = new Date().toISOString().split('T')[0];
 
 // ─── IBAN validation (MOD-97) ───
 function formatIBAN(raw) {
@@ -572,6 +573,28 @@ function parseAmount(str) {
   return parseFloat(str.replace(/\s/g, '').replace(',', '.'));
 }
 
+// ─── Fuzzy matching ───
+function fuzzyScore(query, target) {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  // Exact substring match scores highest
+  if (t.includes(q)) return 1000 + (q.length / t.length) * 100;
+  // Character-by-character fuzzy match
+  let qi = 0, score = 0, streak = 0, prevMatch = -2;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) {
+      qi++;
+      streak = (ti === prevMatch + 1) ? streak + 1 : 1;
+      score += streak * 2; // consecutive matches score higher
+      // Bonus for matching at start of word
+      if (ti === 0 || t[ti - 1] === ' ' || t[ti - 1] === '-' || t[ti - 1] === '(') score += 5;
+      prevMatch = ti;
+    }
+  }
+  // All query characters must be found in order
+  return qi === q.length ? score : 0;
+}
+
 // ─── Recipient autocomplete ───
 let activeIndex = -1;
 
@@ -582,10 +605,16 @@ function renderRecipientList(query) {
   if (!q) { recipientList.classList.remove('open'); return; }
 
   const qClean = q.replace(/\s/g, '');
-  const matches = recipients.filter(r =>
-    r.recipient_label.toLowerCase().includes(q) ||
-    r.iban.toLowerCase().replace(/\s/g, '').includes(qClean)
-  );
+  const scored = recipients.map(r => ({
+    r,
+    score: Math.max(
+      fuzzyScore(q, r.recipient_label),
+      r.iban.toLowerCase().replace(/\s/g, '').includes(qClean) ? 500 : 0
+    )
+  })).filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const matches = scored.map(s => s.r);
 
   const exactMatch = recipients.some(r =>
     r.recipient_label.toLowerCase() === q
@@ -862,6 +891,7 @@ function resetForm() {
     f.classList.remove('error', 'valid');
   });
   setMinDate();
+  dueDateInput.value = new Date().toISOString().split('T')[0];
 }
 
 // ─── Toast ───

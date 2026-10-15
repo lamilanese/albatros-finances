@@ -7,12 +7,13 @@ Single-page HTML form that submits to a Supabase backend and sends a Telegram no
 ## Database (Supabase)
 
 ### Table: `recipients`
-| Column          | Type         | Notes          |
-|-----------------|--------------|----------------|
-| recipient_id    | uuid (PK)    | auto-generated |
-| created_at      | timestamptz  | auto           |
-| iban            | text         |                |
-| recipient_label | text         |                |
+| Column          | Type         | Notes                                                    |
+|-----------------|--------------|----------------------------------------------------------|
+| recipient_id    | uuid (PK)    | auto-generated                                           |
+| created_at      | timestamptz  | auto                                                     |
+| iban            | text         |                                                          |
+| recipient_label | text         |                                                          |
+| category        | text         | one of: Adhérents, Membres du bureau, Prestataires, Salles |
 
 ### Table: `invoices`
 | Column       | Type         | Notes                          |
@@ -31,10 +32,11 @@ Single-page HTML form that submits to a Supabase backend and sends a Telegram no
 ## Form Fields & Validation
 1. **Intitulé** (text, required) → `invoices.label`
 2. **Montant** (number, required, > 0, 2 decimal places) → `invoices.amount`
-3. **Destinataire** (text, required) → `recipients.recipient_label` — autocomplete from existing recipients, allow adding new
-4. **IBAN** (text, required) → `recipients.iban` — auto-filled when existing recipient selected, validated (MOD-97 check), auto-formatted with spaces
-5. **Échéance** (date, required, future dates only) → `invoices.due_date`
-6. **Facture** (file upload, required) → storage bucket
+3. **Destinataire** (text, required) → `recipients.recipient_label` — autocomplete from existing recipients (matches by label or IBAN), allow adding new
+4. **IBAN** (text, required for new recipients) → `recipients.iban` — hidden by default; shown as info line when existing recipient selected, shown as editable field for new recipients; validated (MOD-97 check), auto-formatted with spaces
+5. **Catégorie** (select, required for new recipients) → `recipients.category` — hidden by default; shown as info line when existing recipient selected, shown as editable select for new recipients
+6. **Échéance** (date, required, future dates only) → `invoices.due_date`
+7. **Facture** (file upload, required) → storage bucket
    - Accepted: PDF, JPEG, PNG, HEIC, HEIF, WebP, TIFF, AVIF, GIF, BMP
    - MIME: `application/pdf, application/x-pdf, image/jpeg, image/jpg, image/pjpeg, image/png, image/x-png, image/heic, image/heif, image/heic-sequence, image/heif-sequence, image/webp, image/tiff, image/avif, image/gif, image/bmp`
 
