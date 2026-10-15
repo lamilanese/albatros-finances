@@ -90,7 +90,8 @@
     -webkit-appearance: none;
     transition: border-color 0.15s;
   }
-  input[type="date"] { line-height: normal; }
+  input[type="text"],
+  input[type="date"] { line-height: 1.2; }
   input:focus { border-bottom-color: var(--gold); }
   input::placeholder { color: var(--gray-400); }
 
@@ -512,8 +513,7 @@ const newRecipientFields = document.getElementById('newRecipientFields');
 
 // Show/hide recipient detail sections
 function showRecipientInfo(r) {
-  const maskedIban = formatIBAN(r.iban).replace(/(.{7}).*(.{4})$/, '$1 •••• $2');
-  const parts = [maskedIban];
+  const parts = [formatIBAN(r.iban)];
   if (r.category) parts.push(r.category);
   recipientInfo.textContent = parts.join(' · ');
   recipientInfo.classList.add('visible');
@@ -581,8 +581,10 @@ function renderRecipientList(query) {
   activeIndex = -1;
   if (!q) { recipientList.classList.remove('open'); return; }
 
+  const qClean = q.replace(/\s/g, '');
   const matches = recipients.filter(r =>
-    r.recipient_label.toLowerCase().includes(q)
+    r.recipient_label.toLowerCase().includes(q) ||
+    r.iban.toLowerCase().replace(/\s/g, '').includes(qClean)
   );
 
   const exactMatch = recipients.some(r =>
