@@ -35,6 +35,7 @@ serve(async (req) => {
       amount,
       recipient_label,
       iban,
+      category,
       due_date,
       invoice_id,
       invoice_number,
@@ -84,6 +85,7 @@ serve(async (req) => {
       `📄 ${esc(label)}\n` +
       `💶 \`${esc(amountStr)} €\`${dateLine}\n\n` +
       `👤 \`${esc(recipient_label)}\`\n` +
+      (category ? `||${esc(category)}||\n` : ``) +
       (new_recipient ? `🏦 \`${iban}\`\n\n` : `\n`) +
       `🔖 \`${esc(invoice_number)}\` · *En attente*`;
 

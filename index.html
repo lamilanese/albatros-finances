@@ -90,6 +90,7 @@
     -webkit-appearance: none;
     transition: border-color 0.15s;
   }
+  input[type="date"] { min-height: 2.85rem; }
   input:focus { border-bottom-color: var(--gold); }
   input::placeholder { color: var(--gray-400); }
 
@@ -182,6 +183,29 @@
   /* IBAN */
   #iban { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.85rem; }
   #iban.locked { color: var(--gray-500); cursor: not-allowed; }
+
+  /* Category select */
+  select {
+    width: 100%;
+    border: none;
+    padding: 0.7rem 0.75rem;
+    font-size: 0.95rem;
+    font-family: var(--mono);
+    color: var(--black);
+    background: transparent;
+    border-bottom: 2px solid var(--black);
+    outline: none;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  select:focus { border-bottom-color: var(--gold); }
+  select:invalid, select option[value=""] { color: var(--gray-400); }
+  select option { color: var(--black); }
+  select.locked { color: var(--gray-500); pointer-events: none; }
+  .field.error select { border-bottom-color: var(--red) !important; }
 
   /* File upload — compact */
   .file-drop {
@@ -352,6 +376,18 @@
     <div class="error-msg">IBAN invalide</div>
   </div>
 
+  <div class="field" data-field="category">
+    <label for="category">Catégorie<span class="req">*</span></label>
+    <select id="category" required>
+      <option value="" disabled selected>Sélectionner</option>
+      <option value="Adhérents">Adhérents</option>
+      <option value="Membres du bureau">Membres du bureau</option>
+      <option value="Prestataires">Prestataires</option>
+      <option value="Salles">Salles</option>
+    </select>
+    <div class="error-msg">Ce champ est requis</div>
+  </div>
+
   <div class="field" data-field="file">
     <label>Facture<span class="req">*</span></label>
     <div class="file-drop" id="fileDrop">
@@ -402,6 +438,7 @@ const fileSize = document.getElementById('fileSize');
 const fileRemove = document.getElementById('fileRemove');
 const submitBtn = document.getElementById('submitBtn');
 const toast = document.getElementById('toast');
+const categorySelect = document.getElementById('category');
 const typeToggle = document.getElementById('typeToggle');
 const dueDateLabel = dueDateInput.closest('.field').querySelector('label');
 const dueDateError = dueDateInput.closest('.field').querySelector('.error-msg');
@@ -462,6 +499,14 @@ function lockIBAN() {
 function unlockIBAN() {
   ibanInput.readOnly = false;
   ibanInput.classList.remove('locked');
+}
+
+// Category lock/unlock
+function lockCategory() {
+  categorySelect.classList.add('locked');
+}
+function unlockCategory() {
+  categorySelect.classList.remove('locked');
 }
 
 // IBAN auto-format on input
@@ -540,7 +585,9 @@ function renderRecipientList(query) {
       e.preventDefault();
       selectedRecipient = null;
       unlockIBAN();
+      unlockCategory();
       ibanInput.value = '';
+      categorySelect.value = '';
       ibanInput.closest('.field').classList.remove('valid');
       recipientList.classList.remove('open');
     });
@@ -561,16 +608,21 @@ function selectRecipient(r) {
   recipientInput.value = r.recipient_label;
   ibanInput.value = formatIBAN(r.iban);
   lockIBAN();
+  categorySelect.value = r.category || '';
+  lockCategory();
   recipientList.classList.remove('open');
   clearFieldError('recipient');
   clearFieldError('iban');
+  clearFieldError('category');
   ibanInput.closest('.field').classList.add('valid');
 }
 
 recipientInput.addEventListener('input', () => {
   selectedRecipient = null;
   unlockIBAN();
+  unlockCategory();
   ibanInput.value = '';
+  categorySelect.value = '';
   ibanInput.closest('.field').classList.remove('valid');
   renderRecipientList(recipientInput.value);
   clearFieldError('recipient');
@@ -689,6 +741,7 @@ function clearFieldError(name) {
 labelInput.addEventListener('input', () => clearFieldError('label'));
 amountInput.addEventListener('input', () => clearFieldError('amount'));
 dueDateInput.addEventListener('input', () => clearFieldError('dueDate'));
+categorySelect.addEventListener('change', () => clearFieldError('category'));
 
 function validateForm() {
   let valid = true;
@@ -714,6 +767,9 @@ function validateForm() {
     setFieldError('iban', 'IBAN invalide');
     valid = false;
   }
+
+  // Category
+  if (!categorySelect.value) { setFieldError('category', 'Ce champ est requis'); valid = false; }
 
   // Date (optional for virement/future only, optional for défraiement/any date)
   const dateVal = dueDateInput.value;
@@ -752,6 +808,7 @@ form.addEventListener('submit', async (e) => {
     amount: parseAmount(amountInput.value),
     recipient_label: recipientInput.value.trim(),
     iban: ibanInput.value.replace(/\s/g, '').toUpperCase(),
+    category: categorySelect.value,
     due_date: dueDateInput.value,
     file_name: selectedFile.name,
     file_size: selectedFile.size,
@@ -780,6 +837,8 @@ function resetForm() {
   dueDateLabel.textContent = 'Échéance';
   dueDateError.textContent = 'Date future requise';
   unlockIBAN();
+  unlockCategory();
+  categorySelect.value = '';
   filePreview.classList.remove('visible');
   fileDrop.style.display = '';
   document.querySelectorAll('.field').forEach(f => {
@@ -813,7 +872,7 @@ async function submitToSupabase(data) {
     const { data: newRecipient, error: rErr } = await sb
       .from('recipients')
       .upsert(
-        { recipient_label: data.recipient_label, iban: data.iban },
+        { recipient_label: data.recipient_label, iban: data.iban, category: data.category },
         { onConflict: 'iban' }
       )
       .select('recipient_id')
@@ -860,6 +919,7 @@ async function submitToSupabase(data) {
         amount: data.amount,
         recipient_label: data.recipient_label,
         iban: data.iban,
+        category: data.category,
         new_recipient: !data.existing_recipient_id,
         due_date: data.due_date,
         invoice_id: invoice.id,
