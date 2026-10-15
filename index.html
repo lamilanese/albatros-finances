@@ -524,9 +524,7 @@ const newRecipientFields = document.getElementById('newRecipientFields');
 
 // Show/hide recipient detail sections
 function showRecipientInfo(r) {
-  const parts = [formatIBAN(r.iban)];
-  if (r.category) parts.push(r.category);
-  recipientInfo.textContent = parts.join(' · ');
+  recipientInfo.textContent = formatIBAN(r.iban);
   recipientInfo.classList.add('visible');
   newRecipientFields.classList.remove('visible');
 }
