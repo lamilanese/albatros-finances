@@ -36,6 +36,7 @@ serve(async (req) => {
       recipient_label,
       iban,
       category,
+      comments,
       due_date,
       invoice_id,
       invoice_number,
@@ -85,8 +86,9 @@ serve(async (req) => {
       `📄 ${esc(label)}\n` +
       `💶 \`${esc(amountStr)} €\`${dateLine}\n\n` +
       `👤 \`${esc(recipient_label)}\`\n` +
-      (category ? `||${esc(category)}||\n` : ``) +
+      (category ? `${esc(category)}\n` : ``) +
       (new_recipient ? `🏦 \`${iban}\`\n\n` : `\n`) +
+      (comments ? `💬 _${esc(comments)}_\n\n` : ``) +
       `🔖 \`${esc(invoice_number)}\` · *En attente*`;
 
     const keyboard = {
@@ -110,6 +112,7 @@ serve(async (req) => {
           text,
           parse_mode: "MarkdownV2",
           reply_markup: keyboard,
+          ...(fileUrl ? { link_preview_options: { url: fileUrl, show_above_text: false } } : {}),
         }),
       }
     );

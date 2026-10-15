@@ -73,6 +73,10 @@
   }
   label .req { color: var(--red); margin-left: 1px; }
 
+  /* Optional field — subdued */
+  .field-optional label { color: var(--gray-400); }
+  .field-optional input { border-bottom-color: var(--gray-400); }
+
   /* Filled input boxes */
   input[type="text"],
   input[type="date"] {
@@ -422,6 +426,11 @@
     <div class="error-msg">Fichier requis</div>
   </div>
 
+  <div class="field field-optional">
+    <label for="comments">Commentaire</label>
+    <input type="text" id="comments" placeholder="Optionnel" autocomplete="off">
+  </div>
+
   <button type="submit" class="submit-btn" id="submitBtn">Envoyer</button>
 </form>
 
@@ -442,6 +451,7 @@ let wireType = 'virement';
 // ─── Elements ───
 const form = document.getElementById('invoiceForm');
 const labelInput = document.getElementById('label');
+const commentsInput = document.getElementById('comments');
 const amountInput = document.getElementById('amount');
 const recipientInput = document.getElementById('recipient');
 const recipientList = document.getElementById('recipientList');
@@ -856,6 +866,7 @@ form.addEventListener('submit', async (e) => {
     iban: selectedRecipient ? selectedRecipient.iban : ibanInput.value.replace(/\s/g, '').toUpperCase(),
     category: selectedRecipient ? selectedRecipient.category : categorySelect.value,
     due_date: dueDateInput.value,
+    comments: commentsInput.value.trim(),
     file_name: selectedFile.name,
     file_size: selectedFile.size,
     existing_recipient_id: selectedRecipient?.recipient_id || null,
@@ -936,6 +947,7 @@ async function submitToSupabase(data) {
       amount: data.amount,
       recipient_id: recipientId,
       due_date: data.due_date || null,
+      comments: data.comments || null,
       sent: false,
     })
     .select('id, invoice_number')
@@ -969,6 +981,7 @@ async function submitToSupabase(data) {
         category: data.category,
         new_recipient: !data.existing_recipient_id,
         due_date: data.due_date,
+        comments: data.comments,
         invoice_id: invoice.id,
         invoice_number: invoice.invoice_number,
         file_path: filePath,
